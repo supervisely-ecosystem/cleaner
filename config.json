@@ -9,7 +9,7 @@
   "isolate": true,
   "headless": true,
   "release": { "version": "v1.2.1", "name": "init" },
-  "slug": "sl/import-strawdi",
+  "slug": "sl/cleaner",
   "icon": "https://i.imgur.com/l3ePYu3.png",
   "icon_background": "#FFFFFF"
 }
