@@ -39,7 +39,7 @@ possible_paths_to_del = [
     # https://github.com/supervisely-ecosystem/export-to-dota
     "/export-to-dota",
 ]
-days_storage = 0
+days_storage = 1
 del_date = datetime.now() - timedelta(days=days_storage)
 sleep_time = 86400
 gb_format = 1024 * 1024 * 1024
@@ -75,6 +75,7 @@ def main():
                 curr_size = api.file.get_directory_size(team_id, curr_path)
                 total_size += curr_size
                 total_files_cnt += 1
+                api.file.remove(team_id, curr_path)
             progress.message = "Total removed {} files ({} Gb). Team: ".format(
                 total_files_cnt, round(total_size / gb_format, 4)
             )
@@ -82,24 +83,28 @@ def main():
         time.sleep(5)
 
     # while True:
+    #     total_size = 0
+    #     total_files_cnt = 0
     #     teams_infos = api.team.get_list()
-    #     for team_cnt, team_info in enumerate(teams_infos):
+    #     progress = sly.Progress("Start cleaning", len(teams_infos))
+    #     for team_info in teams_infos:
     #         team_id = team_info[0]
-    #         team_name = team_info[1]
-    #         sly.logger.info("Check old files for {} team".format(team_name))
-
+    #         print(team_id)
     #         files_info = api.file.list(team_id, path_to_del)
     #         file_to_del_paths = sort_by_date(files_info)
-
     #         for curr_path_to_del in possible_paths_to_del:
     #             files_info_old = api.file.list(team_id, curr_path_to_del)
     #             file_to_del_paths.extend(sort_by_date(files_info_old))
 
     #         for curr_file_path in file_to_del_paths:
-    #             sly.logger.trace(
-    #                 "Cleaning {} team from {} teams".format(team_cnt + 1, len(teams_infos))
-    #             )
+    #             curr_size = api.file.get_directory_size(team_id, curr_file_path)
+    #             total_size += curr_size
+    #             total_files_cnt += 1
     #             api.file.remove(team_id, curr_file_path)
+    #         progress.message = "Total removed {} files ({} Gb). Team: ".format(
+    #             total_files_cnt, round(total_size / gb_format, 4)
+    #         )
+    #         progress.iter_done_report()
 
     #     time.sleep(sleep_time)
 
