@@ -9,6 +9,7 @@ if sly.is_development():
     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 
+api = sly.Api.from_env()
 path_to_del = "/tmp/supervisely/export"
 possible_paths_to_del = [
     # https://github.com/supervisely-ecosystem/export-as-masks
@@ -38,9 +39,10 @@ possible_paths_to_del = [
     # https://github.com/supervisely-ecosystem/export-to-dota
     "/export-to-dota",
 ]
-days_storage = 30
+days_storage = 0
 del_date = datetime.now() - timedelta(days=days_storage)
 sleep_time = 86400
+gb_format = 1024 * 1024 * 1024
 
 
 def sort_by_date(files_info):
@@ -56,27 +58,50 @@ def sort_by_date(files_info):
 
 def main():
 
-    api = sly.Api.from_env()
-
     while True:
-        teams_infos = api.team.get_list()
-        for team_info in teams_infos:
-            team_id = team_info[0]
-            team_name = team_info[1]
-            sly.logger.info("Check old files for {} team".format(team_name))
-
+        total_size = 0
+        total_files_cnt = 0
+        teams_numbers = [439, 443]
+        progress = sly.Progress("Start cleaning", len(teams_numbers))
+        for team_id in teams_numbers:
             files_info = api.file.list(team_id, path_to_del)
             file_to_del_paths = sort_by_date(files_info)
-
             for curr_path_to_del in possible_paths_to_del:
                 files_info_old = api.file.list(team_id, curr_path_to_del)
-                file_to_del_paths.extend(sort_by_date(files_info_old))
+                curr_file_paths = sort_by_date(files_info_old)
+                file_to_del_paths.extend(curr_file_paths)
 
-            for curr_file_path in file_to_del_paths:
-                sly.logger.trace("Delete file: {}".format(curr_file_path))
-                api.file.remove(team_id, curr_file_path)
+            for curr_path in file_to_del_paths:
+                curr_size = api.file.get_directory_size(team_id, curr_path)
+                total_size += curr_size
+                total_files_cnt += 1
+            progress.message = "Total removed {} files ({} Gb). Team: ".format(
+                total_files_cnt, round(total_size / gb_format, 4)
+            )
+            progress.iter_done_report()
+        time.sleep(5)
 
-        time.sleep(sleep_time)
+    # while True:
+    #     teams_infos = api.team.get_list()
+    #     for team_cnt, team_info in enumerate(teams_infos):
+    #         team_id = team_info[0]
+    #         team_name = team_info[1]
+    #         sly.logger.info("Check old files for {} team".format(team_name))
+
+    #         files_info = api.file.list(team_id, path_to_del)
+    #         file_to_del_paths = sort_by_date(files_info)
+
+    #         for curr_path_to_del in possible_paths_to_del:
+    #             files_info_old = api.file.list(team_id, curr_path_to_del)
+    #             file_to_del_paths.extend(sort_by_date(files_info_old))
+
+    #         for curr_file_path in file_to_del_paths:
+    #             sly.logger.trace(
+    #                 "Cleaning {} team from {} teams".format(team_cnt + 1, len(teams_infos))
+    #             )
+    #             api.file.remove(team_id, curr_file_path)
+
+    #     time.sleep(sleep_time)
 
 
 if __name__ == "__main__":

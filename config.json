@@ -8,7 +8,7 @@
   "task_location": "workspace_tasks",
   "isolate": true,
   "headless": true,
-  "release": { "version": "v1.2.1", "name": "init" },
+  "release": { "version": "v0.0.1", "name": "init" },
   "slug": "sl/cleaner",
   "icon": "https://i.imgur.com/l3ePYu3.png",
   "icon_background": "#FFFFFF"
