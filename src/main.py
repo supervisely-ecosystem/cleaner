@@ -61,52 +61,30 @@ def main():
     while True:
         total_size = 0
         total_files_cnt = 0
-        teams_numbers = [439, 443]
-        progress = sly.Progress("Start cleaning", len(teams_numbers))
-        for team_id in teams_numbers:
-            sly.logger.info("Check old files for {} team".format(team_id))
+        teams_infos = api.team.get_list()
+        progress = sly.Progress("Start cleaning", len(teams_infos))
+        for team_info in teams_infos:
+            team_id = team_info[0]
+            team_name = team_info[1]
+            sly.logger.info("Check old files for {} team".format(team_name))
             files_info = api.file.list(team_id, path_to_del)
             file_to_del_paths = sort_by_date(files_info)
             for curr_path_to_del in possible_paths_to_del:
                 files_info_old = api.file.list(team_id, curr_path_to_del)
-                curr_file_paths = sort_by_date(files_info_old)
-                file_to_del_paths.extend(curr_file_paths)
-            for curr_path in file_to_del_paths:
-                curr_size = api.file.get_directory_size(team_id, curr_path)
-                sly.logger.trace("Delete file: {} with {} size".format(curr_path, curr_size))
+                file_to_del_paths.extend(sort_by_date(files_info_old))
+
+            for curr_file_path in file_to_del_paths:
+                curr_size = api.file.get_directory_size(team_id, curr_file_path)
+                sly.logger.trace("Delete file: {} with {} size".format(curr_file_path, curr_size))
                 total_size += curr_size
                 total_files_cnt += 1
-                api.file.remove(team_id, curr_path)
+                api.file.remove(team_id, curr_file_path)
             progress.message = "Total removed {} files ({} Gb). Team: ".format(
                 total_files_cnt, round(total_size / gb_format, 4)
             )
             progress.iter_done_report()
+
         time.sleep(sleep_time)
-
-    # while True:
-    #     total_size = 0
-    #     total_files_cnt = 0
-    #     teams_infos = api.team.get_list()
-    #     progress = sly.Progress("Start cleaning", len(teams_infos))
-    #     for team_info in teams_infos:
-    #         team_id = team_info[0]
-    #         files_info = api.file.list(team_id, path_to_del)
-    #         file_to_del_paths = sort_by_date(files_info)
-    #         for curr_path_to_del in possible_paths_to_del:
-    #             files_info_old = api.file.list(team_id, curr_path_to_del)
-    #             file_to_del_paths.extend(sort_by_date(files_info_old))
-
-    #         for curr_file_path in file_to_del_paths:
-    #             curr_size = api.file.get_directory_size(team_id, curr_file_path)
-    #             total_size += curr_size
-    #             total_files_cnt += 1
-    #             api.file.remove(team_id, curr_file_path)
-    #         progress.message = "Total removed {} files ({} Gb). Team: ".format(
-    #             total_files_cnt, round(total_size / gb_format, 4)
-    #         )
-    #         progress.iter_done_report()
-
-    #     time.sleep(sleep_time)
 
 
 if __name__ == "__main__":
