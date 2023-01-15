@@ -1,0 +1,15 @@
+<div>
+  <sly-card>
+        <div style="margin: 15px 10px 0 0">  </div>
+          <sly-field title="Enter period you want to clear(days):" style="margin: 5px 10px 0 0">
+          <el-input-number v-model="state.clear" :min="1" :max="90" show-input></el-input-number>
+          </sly-field>
+          
+          <sly-field title="Enter time to sleep after cleaning(days):" style="margin: 25px 10px 0 0">
+          <el-input-number v-model="state.sleep" :min="1" :max="90" show-input></el-input-number>
+          </sly-field>
+          
+        </div>
+      
+  </sly-card>
+  </div>
