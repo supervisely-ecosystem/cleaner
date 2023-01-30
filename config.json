@@ -12,6 +12,7 @@
   "headless": true,
   "release": { "version": "v0.0.9", "name": "init" },
   "slug": "sl/cleaner",
-  "icon": "https://i.imgur.com/l3ePYu3.png",
-  "icon_background": "#FFFFFF"
+  "poster": "https://user-images.githubusercontent.com/115161827/215558057-ca96a7e2-c243-4232-8133-8cab6b42d904.png",
+  "icon": "https://user-images.githubusercontent.com/115161827/215558050-d98cfff3-854c-4af8-9d77-942f6212a243.png",
+  "icon_cover": true
 }
