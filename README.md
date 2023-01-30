@@ -1,5 +1,5 @@
 <div align='center' markdown> 
-<img src='https://i.imgur.com/UdBujFN.png' width='250'/> <br>
+<img src='https://user-images.githubusercontent.com/115161827/215558057-ca96a7e2-c243-4232-8133-8cab6b42d904.png'>
 
 # Cleaner
 
