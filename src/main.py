@@ -1,7 +1,8 @@
 import os, time
 from datetime import datetime, timedelta
-import supervisely_lib as sly
+import supervisely as sly
 from dotenv import load_dotenv
+from functools import partial
 
 
 if sly.is_development():
@@ -11,6 +12,7 @@ if sly.is_development():
 
 api = sly.Api.from_env()
 path_to_del = "/tmp/supervisely/export"
+offline_files_path = "/offline-sessions/"
 possible_paths_to_del = [
     # https://github.com/supervisely-ecosystem/export-as-masks
     "/Export-as-masks",
@@ -39,10 +41,10 @@ possible_paths_to_del = [
     # https://github.com/supervisely-ecosystem/export-to-dota
     "/export-to-dota",
 ]
+task_id = int(os.environ["context.taskId"])
 days_storage = int(os.environ["modal.state.clear"])
 sleep_time = int(os.environ["modal.state.sleep"]) * 86400
 del_date = datetime.now() - timedelta(days=days_storage)
-gb_format = 1024 * 1024 * 1024
 
 
 def sort_by_date(files_info):
@@ -56,10 +58,36 @@ def sort_by_date(files_info):
     return file_to_del_paths
 
 
+def sort_offline_session_dir(files):
+    extensions_to_delete = [".py", ".pyc", ".md", ".sh"]
+    files_to_delete = []
+    for file in files:
+        file_date_str = file["updatedAt"].split("T")[0]
+        file_date = datetime.strptime(file_date_str, "%Y-%m-%d")
+        file_ext = os.path.splitext(os.path.basename(file["name"]))[1]
+
+        if file_date < del_date or file_ext in extensions_to_delete:
+            files_to_delete.append(file["path"])
+    return files_to_delete
+
+
+def update_progress(count, api: sly.Api, task_id, progress: sly.Progress):
+    count = min(count, progress.total - progress.current)
+    progress.iters_done(count)
+    if progress.need_report():
+        progress.report_progress()
+
+
+def get_progress_cb(api, task_id, message, total, is_size=False, func=update_progress):
+    progress = sly.Progress(message, total, is_size=is_size)
+    progress_cb = partial(func, api=api, task_id=task_id, progress=progress)
+    progress_cb(0)
+    return progress_cb
+
+
 def main():
 
     while True:
-        total_size = 0
         total_files_cnt = 0
         teams_infos = api.team.get_list()
         progress = sly.Progress("Start cleaning", len(teams_infos))
@@ -69,19 +97,29 @@ def main():
             sly.logger.info("Check old files for {} team".format(team_name))
             files_info = api.file.list(team_id, path_to_del)
             file_to_del_paths = sort_by_date(files_info)
+
+            sly.logger.info("Checking files in offline_sessions directories")
+            offline_sessions_infos = api.file.listdir(team_id, offline_files_path)
+            for info in offline_sessions_infos:
+                if "isDir" in info.keys() and info["isDir"] is True:
+                    sly.logger.info(
+                        "Searching files in {}. Team: {}.".format(info["path"], team_name)
+                    )
+                    session_files = api.file.list(team_id, info["path"])
+                    file_to_del_paths.extend(sort_offline_session_dir(session_files))
+                else:
+                    file_to_del_paths.extend(sort_offline_session_dir([info]))
+
             for curr_path_to_del in possible_paths_to_del:
                 files_info_old = api.file.list(team_id, curr_path_to_del)
                 file_to_del_paths.extend(sort_by_date(files_info_old))
 
-            for curr_file_path in file_to_del_paths:
-                curr_size = api.file.get_directory_size(team_id, curr_file_path)
-                sly.logger.trace("Delete file: {} with {} size".format(curr_file_path, curr_size))
-                total_size += curr_size
-                total_files_cnt += 1
-                api.file.remove(team_id, curr_file_path)
-            progress.message = "Total removed {} files ({} Gb). Team: ".format(
-                total_files_cnt, round(total_size / gb_format, 4)
-            )
+            sly.logger.info("Start deleting files")
+            progress_cb = get_progress_cb(api, task_id, "Removing files", len(file_to_del_paths))
+            api.file.remove_batch(team_id, file_to_del_paths, progress_cb)
+
+            total_files_cnt += len(file_to_del_paths)
+            progress.message = "Total removed {} files. Team: ".format(total_files_cnt)
             progress.iter_done_report()
 
         time.sleep(sleep_time)
