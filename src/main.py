@@ -41,9 +41,10 @@ possible_paths_to_del = [
     # https://github.com/supervisely-ecosystem/export-to-dota
     "/export-to-dota",
 ]
-task_id = int(os.environ["context.taskId"])
+
 days_storage = int(os.environ["modal.state.clear"])
-sleep_time = int(os.environ["modal.state.sleep"]) * 86400
+sleep_days = int(os.environ["modal.state.sleep"])
+sleep_time = sleep_days * 86400
 del_date = datetime.now() - timedelta(days=days_storage)
 
 
@@ -71,16 +72,16 @@ def sort_offline_session_dir(files):
     return files_to_delete
 
 
-def update_progress(count, api: sly.Api, task_id, progress: sly.Progress):
+def update_progress(count, api: sly.Api, progress: sly.Progress):
     count = min(count, progress.total - progress.current)
     progress.iters_done(count)
     if progress.need_report():
         progress.report_progress()
 
 
-def get_progress_cb(api, task_id, message, total, is_size=False, func=update_progress):
+def get_progress_cb(api, message, total, is_size=False, func=update_progress):
     progress = sly.Progress(message, total, is_size=is_size)
-    progress_cb = partial(func, api=api, task_id=task_id, progress=progress)
+    progress_cb = partial(func, api=api, progress=progress)
     progress_cb(0)
     return progress_cb
 
@@ -115,13 +116,17 @@ def main():
                 file_to_del_paths.extend(sort_by_date(files_info_old))
 
             sly.logger.info("Start deleting files")
-            progress_cb = get_progress_cb(api, task_id, "Removing files", len(file_to_del_paths))
+            progress_cb = get_progress_cb(api, "Removing files", len(file_to_del_paths))
             api.file.remove_batch(team_id, file_to_del_paths, progress_cb)
 
             total_files_cnt += len(file_to_del_paths)
-            progress.message = "Total removed {} files. Team: ".format(total_files_cnt)
+            progress.message = "Total removed {} files. Team: {}".format(total_files_cnt, team_name)
             progress.iter_done_report()
 
+        sleep_text = f"{sleep_days} day" if sleep_days == 1 else f"{sleep_days} days"
+        sly.logger.info("Finished. Sleep time: {}.".format(sleep_text))
+        progress.message ="Finished. Sleep time: {}.".format(sleep_text)
+        progress.print_progress()
         time.sleep(sleep_time)
 
 
