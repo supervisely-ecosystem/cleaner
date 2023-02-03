@@ -18,11 +18,11 @@
 This application allows admins to clear the teams folders for all teams in an instance over a period of time(in days).
 Cleaning in teams folders will be carried out in the following ways:
 
-`/tmp/supervisely/export`, `/Export-as-masks`, `/Export-to-Supervisely`, `/yolov5_format`, `/Export to COCO`, `/ApplicationsData/Export-to-Pascal-VOC`, `/activity_data`, `/reference_items`, `/Export only labeled items`, `/ApplicationsData/Export-Metadata`, `/cityscapes_format`, `/video_from_images`, `/tags_to_urls`, `/export-to-dota`.
-All these paths are used for exporting data and many users forget to empty these folders after they finish their work.
+`/tmp/supervisely/export`, `/Export-as-masks`, `/Export-to-Supervisely`, `/yolov5_format`, `/Export to COCO`, `/ApplicationsData/Export-to-Pascal-VOC`, `/activity_data`, `/reference_items`, `/Export only labeled items`, `/ApplicationsData/Export-Metadata`, `/cityscapes_format`, `/video_from_images`, `/tags_to_urls`, `/export-to-dota`, `/offline-sessions`.
+Most of all these paths are used for exporting data and many users forget to empty these folders after they finish their work.
 This is necessary to delete obsolete temporary data that is no longer used and takes up a lot of space on the instance.
 
-After the cleaning is finished, the application will continue to run in the background and resume cleaning after a specified period of time(in days). You can stop it in `Workspace Tasks`.
+After the cleaning is finished, the application will continue to run in the background and resume cleaning after a specified period of time (in days). You can stop it in `Workspace Tasks`.
 
 ## How to Run
 
