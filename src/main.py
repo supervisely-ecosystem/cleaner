@@ -1,9 +1,10 @@
 import os, time
 from datetime import datetime, timedelta
-import supervisely as sly
+from distutils.util import strtobool
 from dotenv import load_dotenv
 from functools import partial
 
+import supervisely as sly
 
 if sly.is_development():
     load_dotenv("local.env")
@@ -42,11 +43,12 @@ possible_paths_to_del = [
     "/export-to-dota",
 ]
 
+all_teams = bool(strtobool(os.getenv('modal.state.allTeams')))
+selected_team_id = None
+if all_teams is False:
+    selected_team_id = int(os.environ["modal.state.teamId"])
 days_storage = int(os.environ["modal.state.clear"])
 sleep_days = int(os.environ["modal.state.sleep"])
-# if sleep_days < 1:
-#     sleep_days = 1
-#     sly.logger.info("Sleep days shouldn`t be less than 1 day, so it is set to 1.")
 sleep_time = sleep_days * 86400
 del_date = datetime.now() - timedelta(days=days_storage)
 
@@ -86,8 +88,11 @@ def main():
 
     while True:
         total_files_cnt = 0
-
-        teams_infos = api.team.get_list()
+        teams_infos = None
+        if all_teams is False and selected_team_id is not None:
+            teams_infos = [api.team.get_info_by_id(selected_team_id)]
+        else:
+            teams_infos = api.team.get_list()
         progress = sly.Progress("Start cleaning", len(teams_infos))
         for team_info in teams_infos:
             team_id = team_info[0]
