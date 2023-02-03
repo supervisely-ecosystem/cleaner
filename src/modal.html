@@ -11,7 +11,7 @@
 
             <sly-field title="Choose team to start cleaning:" style="margin: 25px 10px 0 0">
                 <el-checkbox v-model="state.allTeams">all teams</el-checkbox>
-                <sly-select-team-workspace v-if="!state.allTeams" :team-id.sync="state.teamId" :workspace-id.sync="state.workspaceId" :options="{showWorkspace: false}"></sly-select-team-workspace>
+                <sly-select-team-workspace v-if="!state.allTeams" :team-id.sync="state.teamId" :workspace-id.sync="state.workspaceId" :options="{showWorkspace: false, showLabel: false}"></sly-select-team-workspace>
             </sly-field>
         </div>
       
