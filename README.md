@@ -5,7 +5,7 @@
 
 <p align='center'>
   <a href='#overview'>Overview</a> •
-   <a href='#How-to-Run'>How to Run</a> •
+   <a href='#How-to-Run'>How to Run</a>
 </p>
 
 [![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/cleaner)
