@@ -13,7 +13,8 @@ if sly.is_development():
 
 api = sly.Api.from_env()
 
-path_to_del = "/tmp/supervisely/export"
+export_path_to_del = "/tmp/supervisely/export"
+import_path_to_del = "/import"
 offlines_path = "/offline-sessions/"  # offline sessoins files for apps with GUI 2.0
 possible_paths_to_del = [
     # https://github.com/supervisely-ecosystem/export-as-masks
@@ -106,8 +107,14 @@ def main():
             team_name = team_info[1]
             sly.logger.info(f"Check old files for {team_name} team")
 
-            sly.logger.info(f"Checking files in {path_to_del}. Team: {team_name}")
-            files_info = api.file.list(team_id, path_to_del)
+            # export directory
+            sly.logger.info(f"Checking files in {export_path_to_del}. Team: {team_name}")
+            files_info = api.file.list(team_id, export_path_to_del)
+            file_to_del_paths = sort_by_date_and_ext(files_info)
+
+            # import directory
+            sly.logger.info(f"Checking files in {export_path_to_del}. Team: {team_name}")
+            files_info = api.file.list(team_id, export_path_to_del)
             file_to_del_paths = sort_by_date_and_ext(files_info)
 
             for curr_path in possible_paths_to_del:
