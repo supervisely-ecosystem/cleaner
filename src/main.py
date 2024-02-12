@@ -113,9 +113,9 @@ def main():
             file_to_del_paths = sort_by_date_and_ext(files_info)
 
             # import directory
-            sly.logger.info(f"Checking files in {export_path_to_del}. Team: {team_name}")
-            files_info = api.file.list(team_id, export_path_to_del)
-            file_to_del_paths = sort_by_date_and_ext(files_info)
+            sly.logger.info(f"Checking files in {import_path_to_del}. Team: {team_name}")
+            files_info = api.file.list(team_id, import_path_to_del)
+            file_to_del_paths.extend(sort_by_date_and_ext(files_info))
 
             for curr_path in possible_paths_to_del:
                 sly.logger.info(f"Checking files in {curr_path}. Team: {team_name}")
