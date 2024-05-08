@@ -64,7 +64,7 @@ def sort_by_date_and_ext(files_info: List[dict], offline_sessions: bool = False)
         file_date = datetime.strptime(file_date_str, "%Y-%m-%d")
         file_ext = os.path.splitext(os.path.basename(file_info["name"]))[1]
 
-        if file_date < del_date:
+        if file_date < del_date and not offline_sessions:
             file_to_del_paths.append(file_info["path"])
         elif offline_sessions and file_ext in extensions_to_delete:
             file_to_del_paths.append(file_info["path"])
