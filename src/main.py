@@ -1,11 +1,12 @@
-import os, time
+import os
+import time
 from datetime import datetime, timedelta
 from distutils.util import strtobool
-from dotenv import load_dotenv
 from functools import partial
 from typing import Callable, List
 
 import supervisely as sly
+from dotenv import load_dotenv
 
 if sly.is_development():
     load_dotenv("local.env")
@@ -109,23 +110,54 @@ def main():
 
             # export directory
             sly.logger.info(f"Checking files in {export_path_to_del}. Team: {team_name}")
-            files_info = api.file.list(team_id, export_path_to_del)
+            files_info = api.storage.list(
+                team_id,
+                export_path_to_del,
+                return_type="dict",
+                include_folders=False,
+                with_metadata=False,
+            )
             file_to_del_paths = sort_by_date_and_ext(files_info)
 
             # import directory
             sly.logger.info(f"Checking files in {import_path_to_del}. Team: {team_name}")
-            files_info = api.file.list(team_id, import_path_to_del)
+            files_info = api.storage.list(
+                team_id,
+                import_path_to_del,
+                return_type="dict",
+                include_folders=False,
+                with_metadata=False,
+            )
             file_to_del_paths.extend(sort_by_date_and_ext(files_info))
 
             for curr_path in possible_paths_to_del:
                 sly.logger.info(f"Checking files in {curr_path}. Team: {team_name}")
-                files_info_old = api.file.list(team_id, curr_path)
+                files_info_old = api.storage.list(
+                    team_id,
+                    curr_path,
+                    return_type="dict",
+                    include_folders=False,
+                    with_metadata=False,
+                )
                 file_to_del_paths.extend(sort_by_date_and_ext(files_info_old))
 
             sly.logger.info(f"Checking files in {offlines_path}; this may take a moment")
-            offline_sessions_infos = api.file.listdir(team_id, offlines_path)
-            for path in offline_sessions_infos:
-                session_files = api.file.list(team_id, path)
+            off_session_dir_infos = api.storage.list(
+                team_id,
+                offlines_path,
+                return_type="dict",
+                include_files=False,
+                recursive=False,
+                with_metadata=False,
+            )
+            for info in off_session_dir_infos:
+                session_files = api.storage.list(
+                    team_id,
+                    info["path"],
+                    return_type="dict",
+                    include_folders=False,
+                    with_metadata=False,
+                )
                 file_to_del_paths.extend(sort_by_date_and_ext(session_files, offline_sessions=True))
 
             sly.logger.info(f"Start removing. Team: {team_name}")
