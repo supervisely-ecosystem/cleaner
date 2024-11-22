@@ -150,11 +150,10 @@ def main():
                 recursive=False,
                 with_metadata=False,
             )
-            for path_info in off_session_dir_infos.values():
-                path = path_info["path"]
+            for info in off_session_dir_infos:
                 session_files = api.storage.list(
                     team_id,
-                    path,
+                    info["path"],
                     return_type="dict",
                     include_folders=False,
                     with_metadata=False,
