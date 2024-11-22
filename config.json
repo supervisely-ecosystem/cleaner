@@ -1,22 +1,21 @@
 {
-    "name": "Cleaner",
-    "type": "app",
-    "version": "2.0.0",
-    "categories": [
-        "system"
-    ],
-    "description": "Remove temporary files from Team files",
-    "docker_image": "supervisely/system:6.73.234",
-    "main_script": "src/main.py",
-    "modal_template": "src/modal.html",
-    "modal_template_state": {
-        "clear": 30,
-        "sleep": 2,
-        "allTeams": true
-    },
-    "task_location": "workspace_tasks",
-    "headless": true,
-    "poster": "https://user-images.githubusercontent.com/115161827/215558057-ca96a7e2-c243-4232-8133-8cab6b42d904.png",
-    "icon": "https://user-images.githubusercontent.com/115161827/215558050-d98cfff3-854c-4af8-9d77-942f6212a243.png",
-    "icon_cover": true
+  "name": "Cleaner",
+  "type": "app",
+  "version": "2.0.0",
+  "categories": ["system"],
+  "description": "Remove temporary files from Team files",
+  "docker_image": "supervisely/system:6.73.234",
+  "instance_version": "6.12.5",
+  "main_script": "src/main.py",
+  "modal_template": "src/modal.html",
+  "modal_template_state": {
+    "clear": 30,
+    "sleep": 2,
+    "allTeams": true
+  },
+  "task_location": "workspace_tasks",
+  "headless": true,
+  "poster": "https://user-images.githubusercontent.com/115161827/215558057-ca96a7e2-c243-4232-8133-8cab6b42d904.png",
+  "icon": "https://user-images.githubusercontent.com/115161827/215558050-d98cfff3-854c-4af8-9d77-942f6212a243.png",
+  "icon_cover": true
 }
