@@ -55,8 +55,9 @@ After the cleaning is finished, the application will continue to run in the back
 2. Adjust settings 
   - **Select team** whose files you want to clear (or choose `all teams`)
   - **Set period in days** - files older than this period will be deleted
-  - **Enter count of days to sleep** after cleaning before the next start and press the `RUN` button.
+  - **Enter count of days to sleep** after cleaning before the next start
   - **Set batch size** to determine how much files will be deleted with the one request. If you get an error, try reducing the batch size.
+  -  Press the `RUN` button.
     <br>
     <br>
     <div align="center" markdown>
