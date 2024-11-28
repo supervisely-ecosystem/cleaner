@@ -52,8 +52,13 @@ After the cleaning is finished, the application will continue to run in the back
 <img src="https://user-images.githubusercontent.com/79905215/217010352-0c1ea4a5-611d-4002-ac74-e92360fbcd68.png" width="650"/>
 </div>
 
-2. **Select team** whose files you want to clear (or choose `all teams`), **set period in days** (files older than this period will be deleted), **enter count of days to sleep** after cleaning before the next start and press the `RUN` button.
-
-<div align="center" markdown>
-<img src="https://user-images.githubusercontent.com/79905215/217009473-cd4ba9ec-bbd4-4971-94da-e9bf3582c2ba.png" width="650"/>
-</div>
+2. Adjust settings 
+  - **Select team** whose files you want to clear (or choose `all teams`)
+  - **Set period in days** - files older than this period will be deleted
+  - **Enter count of days to sleep** after cleaning before the next start and press the `RUN` button.
+  - **Set batch size** to determine how much files will be deleted with the one request. If you get an error, try reducing the batch size.
+    <br>
+    <br>
+    <div align="center" markdown>
+    <img src="https://github.com/user-attachments/assets/30c5a405-5302-404f-b393-6429f277701d" width="650"/>
+    </div>
