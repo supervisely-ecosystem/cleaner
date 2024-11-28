@@ -61,5 +61,5 @@ After the cleaning is finished, the application will continue to run in the back
     <br>
     <br>
     <div align="center" markdown>
-    <img src="https://github.com/user-attachments/assets/30c5a405-5302-404f-b393-6429f277701d" width="650"/>
+    <img src="https://github.com/user-attachments/assets/53f75b67-7495-49aa-99e7-0614cdb4f7ed" width="480"/>
     </div>
