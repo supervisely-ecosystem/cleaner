@@ -23,6 +23,14 @@
             >
                 <el-input-number v-model="state.sleep" :min="1" :max="90" show-input></el-input-number>
             </sly-field>
+
+            <sly-field 
+                title="Batch size"
+                description="Enter count of files to delete in one request:"
+                style="margin: 25px 10px 5px 0"
+            >
+                <el-input-number v-model="state.batchSize" :min="100" :max="20000"  show-input></el-input-number>
+            </sly-field>
         </div>
       
   </sly-card>
