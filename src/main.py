@@ -52,6 +52,7 @@ if all_teams is False:
     selected_team_id = int(os.environ["modal.state.teamId"])
 days_storage = int(os.environ["modal.state.clear"])
 sleep_days = int(os.environ["modal.state.sleep"])
+batch_size = int(os.environ["modal.state.batchSize"])
 sleep_time = sleep_days * 86400
 del_date = datetime.now() - timedelta(days=days_storage)
 
@@ -162,7 +163,7 @@ def main():
 
             sly.logger.info(f"Start removing. Team: {team_name}")
             progress_cb = get_progress_cb(api, "Removing files", len(file_to_del_paths))
-            api.file.remove_batch(team_id, file_to_del_paths, progress_cb)
+            api.file.remove_batch(team_id, file_to_del_paths, progress_cb, batch_size=batch_size)
 
             total_files_cnt += len(file_to_del_paths)
             sly.logger.info(f"Total removed {total_files_cnt} files. Team: {team_name}")
