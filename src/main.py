@@ -143,23 +143,15 @@ def main():
                 file_to_del_paths.extend(sort_by_date_and_ext(files_info_old))
 
             sly.logger.info(f"Checking files in {offlines_path}; this may take a moment")
-            off_session_dir_infos = api.storage.list(
+            off_session_files = api.storage.list(
                 team_id,
                 offlines_path,
                 return_type="dict",
-                include_files=False,
-                recursive=False,
+                include_folders=False,
                 with_metadata=False,
+                recursive=True,
             )
-            for info in off_session_dir_infos:
-                session_files = api.storage.list(
-                    team_id,
-                    info["path"],
-                    return_type="dict",
-                    include_folders=False,
-                    with_metadata=False,
-                )
-                file_to_del_paths.extend(sort_by_date_and_ext(session_files, offline_sessions=True))
+            file_to_del_paths.extend(sort_by_date_and_ext(off_session_files, offline_sessions=True))
 
             sly.logger.info(f"Start removing. Team: {team_name}")
             progress_cb = get_progress_cb(api, "Removing files", len(file_to_del_paths))
