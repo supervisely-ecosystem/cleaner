@@ -38,7 +38,7 @@ class CustomStorageApi(StorageApi):
         include_files: bool = True,
         include_folders: bool = True,
         limit: Optional[int] = None,
-        continuation_token: Optional[str] = None,
+        continuation_token: Optional[str] = None,  # * custom argument
     ) -> List[Union[Dict, FileInfo]]:
         """Custom implementation of the list method."""
 
@@ -60,6 +60,7 @@ class CustomStorageApi(StorageApi):
             data = []
             limit_exceeded = False
             if continuation_token is None:
+                # * get first response only if continuation_token is None
                 first_response = self._api.post(method, json_body).json()
                 data = first_response.get("entities", [])
 
@@ -138,6 +139,7 @@ def clean_offline_sessions(
     batch_num = 1
     task_ids_to_remove = set()
     continuation_token = None
+    scanned_files = 0
 
     while True:
 
@@ -152,6 +154,7 @@ def clean_offline_sessions(
             limit=batch_size,
             continuation_token=continuation_token,
         )
+        scanned_files += len(files_infos)
 
         all_task_ids = {get_task_id(file_info["path"]) for file_info in files_infos}
 
@@ -186,4 +189,5 @@ def clean_offline_sessions(
         if len(files_infos) < batch_size:
             break
 
+    sly.logger.info(f"Total files scanned in offline sessions: {scanned_files}")
     return removed_files
