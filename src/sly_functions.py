@@ -1,14 +1,33 @@
 import base64
-import os
+from typing import List
+
+from datetime import datetime
+from typing import List
 import requests
 import supervisely as sly
 from supervisely.api.module_api import ApiField
 from supervisely.api.storage_api import StorageApi
 from supervisely.api.file_api import FileInfo
 from typing import List, Union, Dict, Optional, Literal
+from supervisely import tqdm_sly
+
+
+def sort_by_date(files_info: List[dict], del_date: datetime) -> List[str]:
+    file_to_del_paths = []
+
+    for file_info in files_info:
+        file_date_str = file_info["updatedAt"].split("T")[0]
+        file_date = datetime.strptime(file_date_str, "%Y-%m-%d")
+
+        if file_date < del_date:
+            file_to_del_paths.append(file_info["path"])
+
+    return file_to_del_paths
 
 
 class CustomStorageApi(StorageApi):
+    """Custom implementation of the StorageApi class for Cleaner."""
+
     def list(
         self,
         team_id: int,
@@ -21,9 +40,8 @@ class CustomStorageApi(StorageApi):
         limit: Optional[int] = None,
         continuation_token: Optional[str] = None,
     ) -> List[Union[Dict, FileInfo]]:
-        """
-        Custom implementation of the list method.
-        """
+        """Custom implementation of the list method."""
+
         if not path.endswith("/"):
             path += "/"
         method = "file-storage.v2.list"
@@ -139,7 +157,9 @@ def clean_offline_sessions(
 
         filters = [{"field": "id", "operator": "in", "value": list(all_task_ids)}]
         task_infos = [t for w_id in w_ids for t in api.task.get_list(w_id, filters)]
-        task_ids_to_remove.update({t["id"] for t in task_infos if is_removable(t, app_names)})
+        task_ids_to_remove.update(
+            {t["id"] for t in task_infos if is_removable(t, app_names)}
+        )
 
         file_to_del_paths = []
         for file_info in files_infos:
@@ -154,8 +174,8 @@ def clean_offline_sessions(
         continuation_token = path_to_base64(last_file) if last_file else None
 
         if len(file_to_del_paths) > 0:
-            progress_cb = sly.Progress("Removing files", len(file_to_del_paths))
-            api.file.remove_batch(team_id, file_to_del_paths, progress_cb, batch_size)
+            pbar = tqdm_sly(desc="Removing files", total=len(file_to_del_paths)).update
+            api.file.remove_batch(team_id, file_to_del_paths, pbar, batch_size)
             removed_files += len(file_to_del_paths)
             sly.logger.info(f"Batch {batch_num} finished. Removed: {removed_files}")
             batch_num += 1
