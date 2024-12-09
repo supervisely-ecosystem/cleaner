@@ -142,9 +142,6 @@ def clean_offline_sessions(
     while True:
 
         last_file = None
-        scan_pb = tqdm_sly(
-            desc=f"Scanning batch {batch_num} (limit: {batch_size})", total=1
-        )
 
         files_infos = api.storage.list(
             team_id,
@@ -175,8 +172,6 @@ def clean_offline_sessions(
             last_file = file_info["path"]
 
         continuation_token = path_to_base64(last_file) if last_file else None
-
-        scan_pb.update(1)
 
         if len(file_to_del_paths) > 0:
             pbar = tqdm_sly(
