@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from distutils.util import strtobool
 from functools import partial
 from typing import Callable, List
+import sly_functions as f
 
 import supervisely as sly
 from dotenv import load_dotenv
@@ -13,6 +14,12 @@ if sly.is_development():
     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 api = sly.Api.from_env()
+
+# * list of apps to remove offline sessions files
+apps_to_clean = [
+    "On-the-Fly Quality Assurance",
+    "Render previews GUI",
+]
 
 export_path_to_del = "/tmp/supervisely/export"
 import_path_to_del = "/import"
@@ -105,12 +112,17 @@ def main():
             teams_infos = api.team.get_list()
         progress = sly.Progress("Start cleaning", len(teams_infos))
         for team_info in teams_infos:
-            team_id = team_info[0]
-            team_name = team_info[1]
+            team_id = team_info.id
+            team_name = team_info.name
+
+            workspaces = api.workspace.get_list(team_id)
+            workspaces_ids = [workspace.id for workspace in workspaces]
             sly.logger.info(f"Check old files for {team_name} team")
 
             # export directory
-            sly.logger.info(f"Checking files in {export_path_to_del}. Team: {team_name}")
+            sly.logger.info(
+                f"Team: {team_name}. Checking files in {export_path_to_del}."
+            )
             files_info = api.storage.list(
                 team_id,
                 export_path_to_del,
@@ -121,7 +133,9 @@ def main():
             file_to_del_paths = sort_by_date_and_ext(files_info)
 
             # import directory
-            sly.logger.info(f"Checking files in {import_path_to_del}. Team: {team_name}")
+            sly.logger.info(
+                f"Team: {team_name}. Checking files in {import_path_to_del}."
+            )
             files_info = api.storage.list(
                 team_id,
                 import_path_to_del,
@@ -132,7 +146,7 @@ def main():
             file_to_del_paths.extend(sort_by_date_and_ext(files_info))
 
             for curr_path in possible_paths_to_del:
-                sly.logger.info(f"Checking files in {curr_path}. Team: {team_name}")
+                sly.logger.info(f"Team: {team_name}. Checking files in {curr_path}.")
                 files_info_old = api.storage.list(
                     team_id,
                     curr_path,
@@ -142,24 +156,21 @@ def main():
                 )
                 file_to_del_paths.extend(sort_by_date_and_ext(files_info_old))
 
-            sly.logger.info(f"Checking files in {offlines_path}; this may take a moment")
-            off_session_files = api.storage.list(
-                team_id,
-                offlines_path,
-                return_type="dict",
-                include_folders=False,
-                with_metadata=False,
-                recursive=True,
-            )
-            file_to_del_paths.extend(sort_by_date_and_ext(off_session_files, offline_sessions=True))
-
-            sly.logger.info(f"Start removing. Team: {team_name}")
+            sly.logger.info(f"Team: {team_name}. Start removing.")
             progress_cb = get_progress_cb(api, "Removing files", len(file_to_del_paths))
-            api.file.remove_batch(team_id, file_to_del_paths, progress_cb, batch_size=batch_size)
-
+            api.file.remove_batch(
+                team_id, file_to_del_paths, progress_cb, batch_size=batch_size
+            )
             total_files_cnt += len(file_to_del_paths)
-            sly.logger.info(f"Total removed {total_files_cnt} files. Team: {team_name}")
-            progress.message = f"Total removed {total_files_cnt} files. Team: {team_name}"
+
+            # # offline sessions files
+            removed_files = f.clean_offline_sessions(
+                api, team_id, offlines_path, apps_to_clean, batch_size, workspaces_ids
+            )
+            total_files_cnt += removed_files
+
+            sly.logger.info(f"Team: {team_name}. Total removed: {total_files_cnt}.")
+            progress.message = f"Team: {team_name}. Total removed: {total_files_cnt}."
             progress.iter_done_report()
             time.sleep(2)
 
