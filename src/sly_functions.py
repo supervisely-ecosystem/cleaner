@@ -142,6 +142,9 @@ def clean_offline_sessions(
     while True:
 
         last_file = None
+        scan_pb = tqdm_sly(
+            desc=f"Scanning batch {batch_num} (limit: {batch_size})", total=1
+        )
 
         files_infos = api.storage.list(
             team_id,
@@ -173,8 +176,12 @@ def clean_offline_sessions(
 
         continuation_token = path_to_base64(last_file) if last_file else None
 
+        scan_pb.update(1)
+
         if len(file_to_del_paths) > 0:
-            pbar = tqdm_sly(desc="Removing files", total=len(file_to_del_paths)).update
+            pbar = tqdm_sly(
+                desc=f"Removing batch {batch_num}", total=len(file_to_del_paths)
+            ).update
             api.file.remove_batch(team_id, file_to_del_paths, pbar, batch_size)
             removed_files += len(file_to_del_paths)
             sly.logger.info(f"Batch {batch_num} finished. Removed: {removed_files}")
