@@ -173,13 +173,14 @@ def clean_offline_sessions(
 
         continuation_token = path_to_base64(last_file) if last_file else None
 
-        if len(file_to_del_paths) > 0:
+        curr_batch_len = len(file_to_del_paths)
+        if curr_batch_len > 0:
             pbar = tqdm_sly(
-                desc=f"Removing batch {batch_num}", total=len(file_to_del_paths)
+                desc=f"Removing batch {batch_num}", total=curr_batch_len
             ).update
             api.file.remove_batch(team_id, file_to_del_paths, pbar, batch_size)
-            removed_files += len(file_to_del_paths)
-            sly.logger.info(f"Batch {batch_num} finished. Removed: {removed_files}")
+            removed_files += curr_batch_len
+            sly.logger.info(f"Batch {batch_num} finished. Removed: {curr_batch_len}")
             batch_num += 1
 
         if len(files_infos) < batch_size:
