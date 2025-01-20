@@ -157,13 +157,17 @@ def clean_offline_sessions(
         scanned_files += len(files_infos)
 
         all_task_ids = {get_task_id(file_info["path"]) for file_info in files_infos}
-
-        filters = [{"field": "id", "operator": "in", "value": list(all_task_ids)}]
-        task_infos = [t for w_id in w_ids for t in api.task.get_list(w_id, filters)]
-        task_ids_to_remove.update(
-            {t["id"] for t in task_infos if is_removable(t, app_names)}
-        )
-
+        if all_task_ids:
+            filters = [{"field": "id", "operator": "in", "value": list(all_task_ids)}]
+            if w_ids:
+                task_infos = [t for w_id in w_ids for t in api.task.get_list(w_id, filters)]
+            else:
+                task_infos = []
+        else:
+            filters = []
+            task_infos = []
+        task_ids_to_remove.update({t["id"] for t in task_infos if is_removable(t, app_names)})
+        
         file_to_del_paths = []
         for file_info in files_infos:
             if get_task_id(file_info["path"]) in task_ids_to_remove:
