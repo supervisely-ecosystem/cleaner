@@ -158,9 +158,11 @@ def clean_offline_sessions(
 
         all_task_ids = {get_task_id(file_info["path"]) for file_info in files_infos}
         if all_task_ids:
-            filters = [{"field": "id", "operator": "in", "value": list(all_task_ids)}]
             if w_ids:
-                task_infos = [t for w_id in w_ids for t in api.task.get_list(w_id, filters)]
+                task_infos = []
+                for batch_tasks in sly.batched(all_task_ids, 500):
+                    filters = [{"field": "id", "operator": "in", "value": list(batch_tasks)}]
+                    task_infos.extend([t for w_id in w_ids for t in api.task.get_list(w_id, filters)])
             else:
                 task_infos = []
         else:
