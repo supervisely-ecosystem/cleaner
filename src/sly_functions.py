@@ -169,8 +169,6 @@ def clean_offline_sessions(
 
         if len(task_infos) > 0:
             task_ids_to_remove.update({t["id"] for t in task_infos if is_removable(t, app_names)})
-        else:
-            task_ids_to_remove = []
         
         file_to_del_paths = []
         for file_info in files_infos:
