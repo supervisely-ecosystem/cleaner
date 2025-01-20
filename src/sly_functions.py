@@ -166,7 +166,6 @@ def clean_offline_sessions(
             else:
                 task_infos = []
         else:
-            filters = []
             task_infos = []
 
         if len(task_infos) > 0:
