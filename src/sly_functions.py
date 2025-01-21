@@ -4,6 +4,7 @@ from typing import List
 from datetime import datetime
 from typing import List
 import requests
+import json
 import supervisely as sly
 from supervisely.api.module_api import ApiField
 from supervisely.api.storage_api import StorageApi
@@ -11,6 +12,7 @@ from supervisely.api.file_api import FileInfo
 from typing import List, Union, Dict, Optional, Literal
 from supervisely import tqdm_sly
 
+DEFAULT_LIMIT = 10000
 
 def sort_by_date(files_info: List[dict], del_date: datetime) -> List[str]:
     file_to_del_paths = []
@@ -144,24 +146,52 @@ def clean_offline_sessions(
     while True:
 
         last_file = None
-
-        files_infos = api.storage.list(
-            team_id,
-            offlines_path,
-            return_type="dict",
-            include_folders=False,
-            with_metadata=False,
-            limit=batch_size,
-            continuation_token=continuation_token,
-        )
+        try:
+            files_infos = api.storage.list(
+                team_id,
+                offlines_path,
+                return_type="dict",
+                include_folders=False,
+                with_metadata=False,
+                limit=batch_size,
+                continuation_token=continuation_token,
+            )
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 400 and "limit" in e.response.text:
+                sly.logger.warning(f"Failed to list storage files due to limit error. Checking max limit...")
+                try:
+                    error_details = json.loads(e.response.text)
+                    max_limit = error_details["details"][0]["context"]["limit"]
+                    sly.logger.info(f"Max limit for storage listing set to {max_limit} due to API response recommendation.")
+                except Exception as e:
+                    sly.logger.warning(f"Failed to get max limit, setting default: {DEFAULT_LIMIT}")
+                    max_limit = DEFAULT_LIMIT
+                batch_size = max_limit
+                try:
+                    files_infos = api.storage.list(
+                        team_id,
+                        offlines_path,
+                        return_type="dict",
+                        include_folders=False,
+                        with_metadata=False,
+                        limit=batch_size,
+                        continuation_token=continuation_token,
+                    )
+                except Exception as e:
+                    sly.logger.warning(f"Failed to list files after adjusting limit: {repr(e)}")
+            else:
+                sly.logger.warning(f"Failed to list files: {repr(e)}")
+        except Exception as e:
+            sly.logger.warning(f"Failed to list files: {repr(e)}")
+            
         scanned_files += len(files_infos)
 
-        all_task_ids = {get_task_id(file_info["path"]) for file_info in files_infos}
+        all_task_ids = list(set([get_task_id(file_info["path"]) for file_info in files_infos]))
         if all_task_ids:
             if w_ids:
                 task_infos = []
                 for batch_tasks in sly.batched(all_task_ids, 500):
-                    filters = [{"field": "id", "operator": "in", "value": list(batch_tasks)}]
+                    filters = [{"field": "id", "operator": "in", "value": batch_tasks}]
                     task_infos.extend([t for w_id in w_ids for t in api.task.get_list(w_id, filters)])
             else:
                 task_infos = []
