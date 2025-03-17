@@ -4,8 +4,8 @@
   "version": "2.0.0",
   "categories": ["system"],
   "description": "Remove temporary files from Team files",
-  "docker_image": "supervisely/system:6.73.248",
-  "instance_version": "6.12.15",
+  "docker_image": "supervisely/system:6.73.331",
+  "instance_version": "6.12.34",
   "main_script": "src/main.py",
   "modal_template": "src/modal.html",
   "modal_template_state": {
