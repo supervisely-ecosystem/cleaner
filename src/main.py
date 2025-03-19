@@ -1,3 +1,4 @@
+import math
 import os
 import time
 from datetime import datetime, timedelta
@@ -5,8 +6,7 @@ from distutils.util import strtobool
 
 import supervisely as sly
 from dotenv import load_dotenv
-from supervisely import tqdm_sly
-from supervisely._utils import run_coroutine
+from tqdm import tqdm
 
 import sly_functions as f
 
@@ -61,8 +61,8 @@ def main():
             teams_infos = [api.team.get_info_by_id(selected_team_id)]
         else:
             # teams_infos = api.team.get_list()
-            teams_infos = run_coroutine(f.teams_get_list_async(api))
-        progress = sly.Progress("Start cleaning", len(teams_infos))
+            teams_infos = f.run_coroutine(f.teams_get_list_async(api))
+        progress = tqdm(desc="Start cleaning", total=len(teams_infos))
         for team_info in teams_infos:
             team_id = team_info.id
             team_name = team_info.name
@@ -80,7 +80,7 @@ def main():
             #     include_folders=False,
             #     with_metadata=False,
             # )
-            files_info = run_coroutine(
+            files_info = f.run_coroutine(
                 f.storage_get_list_async(
                     api,
                     team_id,
@@ -101,7 +101,7 @@ def main():
             #     include_folders=False,
             #     with_metadata=False,
             # )
-            files_info = run_coroutine(
+            files_info = f.run_coroutine(
                 f.storage_get_list_async(
                     api,
                     team_id,
@@ -123,7 +123,7 @@ def main():
                 #     include_folders=False,
                 #     with_metadata=False,
                 # )
-                files_info_old = run_coroutine(
+                files_info_old = f.run_coroutine(
                     f.storage_get_list_async(
                         api,
                         team_id,
@@ -137,7 +137,7 @@ def main():
 
             if len(file_to_del_paths) > 0:
                 sly.logger.info(f"Team: {team_name}. Start removing.")
-                pbar = tqdm_sly(total=len(file_to_del_paths), desc="Cleaning...").update
+                pbar = tqdm(total=len(file_to_del_paths), desc="Cleaning...").update
                 api.file.remove_batch(team_id, file_to_del_paths, pbar, batch_size)
                 total_files_cnt += len(file_to_del_paths)
 
@@ -148,15 +148,27 @@ def main():
             total_files_cnt += removed_files
 
             sly.logger.info(f"Team: {team_name}. Total removed: {total_files_cnt}.")
-            progress.message = f"Team: {team_name}. Total removed: {total_files_cnt}."
-            progress.iter_done_report()
+            progress.update(1)
             time.sleep(2)
 
         sleep_text = f"{sleep_days} day" if sleep_days <= 1 else f"{sleep_days} days"
         sly.logger.info(f"Finished. Sleep time: {sleep_text}.")
-        progress.message = f"Finished. Sleep time: {sleep_text}."
-        progress.print_progress()
-        time.sleep(sleep_time)
+        progress.close()
+
+        # Waiting for the next cleaning cycle
+        sleep_time_hours = int(sleep_time / 3600)
+        with tqdm(
+            total=sleep_time_hours,
+            desc=f"Waiting {sleep_time_hours} hours for next cleaning cycle",
+            unit="hours",
+        ) as pbar:
+            chunk_size_hours = 1  # Update progress every hour
+            chunks = math.ceil(sleep_time_hours / chunk_size_hours)
+            for _ in range(chunks):
+                time_to_sleep_hours = min(chunk_size_hours, sleep_time_hours - pbar.n)
+                time_to_sleep_seconds = time_to_sleep_hours * 3600
+                time.sleep(time_to_sleep_seconds)
+                pbar.update(time_to_sleep_hours)
 
 
 if __name__ == "__main__":
