@@ -5,7 +5,7 @@ from distutils.util import strtobool
 
 import supervisely as sly
 from dotenv import load_dotenv
-from supervisely import tqdm_sly
+from tqdm import tqdm
 from supervisely._utils import run_coroutine
 
 import sly_functions as f
@@ -62,7 +62,7 @@ def main():
         else:
             # teams_infos = api.team.get_list()
             teams_infos = run_coroutine(f.teams_get_list_async(api))
-        progress = sly.Progress("Start cleaning", len(teams_infos))
+        progress = tqdm(desc="Start cleaning", total=len(teams_infos))
         for team_info in teams_infos:
             team_id = team_info.id
             team_name = team_info.name
@@ -137,7 +137,7 @@ def main():
 
             if len(file_to_del_paths) > 0:
                 sly.logger.info(f"Team: {team_name}. Start removing.")
-                pbar = tqdm_sly(total=len(file_to_del_paths), desc="Cleaning...").update
+                pbar = tqdm(total=len(file_to_del_paths), desc="Cleaning...").update
                 api.file.remove_batch(team_id, file_to_del_paths, pbar, batch_size)
                 total_files_cnt += len(file_to_del_paths)
 
@@ -148,14 +148,12 @@ def main():
             total_files_cnt += removed_files
 
             sly.logger.info(f"Team: {team_name}. Total removed: {total_files_cnt}.")
-            progress.message = f"Team: {team_name}. Total removed: {total_files_cnt}."
-            progress.iter_done_report()
+            progress.update(1)
             time.sleep(2)
 
         sleep_text = f"{sleep_days} day" if sleep_days <= 1 else f"{sleep_days} days"
         sly.logger.info(f"Finished. Sleep time: {sleep_text}.")
-        progress.message = f"Finished. Sleep time: {sleep_text}."
-        progress.print_progress()
+        progress.close()
         time.sleep(sleep_time)
 
 
