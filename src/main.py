@@ -2,11 +2,13 @@ import os
 import time
 from datetime import datetime, timedelta
 from distutils.util import strtobool
-import sly_functions as f
-from supervisely import tqdm_sly
 
 import supervisely as sly
 from dotenv import load_dotenv
+from supervisely import tqdm_sly
+from supervisely._utils import run_coroutine
+
+import sly_functions as f
 
 if sly.is_development():
     load_dotenv("local.env")
@@ -58,7 +60,8 @@ def main():
         if all_teams is False and selected_team_id is not None:
             teams_infos = [api.team.get_info_by_id(selected_team_id)]
         else:
-            teams_infos = api.team.get_list()
+            # teams_infos = api.team.get_list()
+            teams_infos = run_coroutine(f.teams_get_list_async(api))
         progress = sly.Progress("Start cleaning", len(teams_infos))
         for team_info in teams_infos:
             team_id = team_info.id
@@ -69,40 +72,66 @@ def main():
             sly.logger.info(f"Check old files for {team_name} team")
 
             # export directory
-            sly.logger.info(
-                f"Team: {team_name}. Checking files in {export_path_to_del}."
-            )
-            files_info = api.storage.list(
-                team_id,
-                export_path_to_del,
-                return_type="dict",
-                include_folders=False,
-                with_metadata=False,
+            sly.logger.info(f"Team: {team_name}. Checking files in {export_path_to_del}.")
+            # files_info = api.storage.list(
+            #     team_id,
+            #     export_path_to_del,
+            #     return_type="dict",
+            #     include_folders=False,
+            #     with_metadata=False,
+            # )
+            files_info = run_coroutine(
+                f.storage_get_list_async(
+                    api,
+                    team_id,
+                    export_path_to_del,
+                    return_type="dict",
+                    include_folders=False,
+                    with_metadata=False,
+                )
             )
             file_to_del_paths = f.sort_by_date(files_info, del_date)
 
             # import directory
-            sly.logger.info(
-                f"Team: {team_name}. Checking files in {import_path_to_del}."
-            )
-            files_info = api.storage.list(
-                team_id,
-                import_path_to_del,
-                return_type="dict",
-                include_folders=False,
-                with_metadata=False,
+            sly.logger.info(f"Team: {team_name}. Checking files in {import_path_to_del}.")
+            # files_info = api.storage.list(
+            #     team_id,
+            #     import_path_to_del,
+            #     return_type="dict",
+            #     include_folders=False,
+            #     with_metadata=False,
+            # )
+            files_info = run_coroutine(
+                f.storage_get_list_async(
+                    api,
+                    team_id,
+                    import_path_to_del,
+                    return_type="dict",
+                    include_folders=False,
+                    with_metadata=False,
+                )
             )
             file_to_del_paths.extend(f.sort_by_date(files_info, del_date))
 
             # other legacy directories
             for curr_path in possible_paths_to_del:
                 sly.logger.info(f"Team: {team_name}. Checking files in {curr_path}.")
-                files_info_old = api.storage.list(
-                    team_id,
-                    curr_path,
-                    return_type="dict",
-                    include_folders=False,
-                    with_metadata=False,
+                # files_info_old = api.storage.list(
+                #     team_id,
+                #     curr_path,
+                #     return_type="dict",
+                #     include_folders=False,
+                #     with_metadata=False,
+                # )
+                files_info_old = run_coroutine(
+                    f.storage_get_list_async(
+                        api,
+                        team_id,
+                        curr_path,
+                        return_type="dict",
+                        include_folders=False,
+                        with_metadata=False,
+                    )
                 )
                 file_to_del_paths.extend(f.sort_by_date(files_info_old, del_date))
 

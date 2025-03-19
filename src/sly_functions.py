@@ -1,16 +1,16 @@
+import asyncio
 import base64
-from typing import List
-
-from datetime import datetime
-from typing import List
-import requests
 import json
+import time
+from datetime import datetime
+from typing import Dict, List, Literal, Optional, Union
+
+import requests
 import supervisely as sly
+from supervisely import tqdm_sly
+from supervisely.api.file_api import FileInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.storage_api import StorageApi
-from supervisely.api.file_api import FileInfo
-from typing import List, Union, Dict, Optional, Literal
-from supervisely import tqdm_sly
 
 DEFAULT_LIMIT = 10000
 
@@ -228,3 +228,160 @@ def clean_offline_sessions(
 
     sly.logger.info(f"Total files scanned in offline sessions: {scanned_files}")
     return removed_files
+
+async def teams_get_list_async(
+    api: sly.Api,
+    filters: List[Dict[str, str]] = None,
+    limit: int = None,
+):
+    """
+    Get list of teams asynchronously from the Supervisely server.
+    """
+    method = "teams.list"
+    data = {
+        ApiField.FILTER: filters or [],
+        ApiField.SORT: ApiField.ID,
+        ApiField.SORT_ORDER: "asc"
+    }
+    
+    semaphore = asyncio.Semaphore(5)
+    pages_count = None
+    tasks: List[asyncio.Task] = []
+
+    async def _r(data_, page_num):
+        nonlocal pages_count
+        async with semaphore:
+            response = await api.post_async(method, data_)
+            response_json = response.json()
+            items = response_json.get("entities", [])
+            pages_count = response_json["pagesCount"]
+        return [api.team._convert_json_info(item) for item in items]
+
+    # Get first page
+    data[ApiField.PAGE] = 1
+    t = time.monotonic()
+    items = await _r(data, 1)
+    sly.logger.debug(f"Awaited teams page 1/{pages_count} for {time.monotonic() - t:.4f} sec")
+    
+    # Check if we've exceeded the limit with just the first page
+    if limit is not None and len(items) >= limit:
+        return items[:limit]
+    
+    # Get remaining pages in parallel
+    t = time.monotonic()
+    for page_n in range(2, pages_count + 1):
+        data[ApiField.PAGE] = page_n
+        tasks.append(asyncio.create_task(_r(data.copy(), page_n)))
+    
+    # Await all tasks and collect results
+    for i, task in enumerate(tasks, 2):
+        new_items = await task
+        items.extend(new_items)
+        sly.logger.debug(f"Awaited teams page {i}/{pages_count} for {time.monotonic() - t:.4f} sec")
+        t = time.monotonic()
+        
+        # Check if we've exceeded the limit
+        if limit is not None and len(items) >= limit:
+            return items[:limit]
+    
+    return items
+
+async def storage_get_list_async(
+    api: sly.Api,
+    team_id: int,
+    path: str,
+    recursive: bool = True,
+    return_type: Literal["dict", "fileinfo"] = "fileinfo",
+    with_metadata: bool = True,
+    include_files: bool = True,
+    include_folders: bool = True,
+    limit: Optional[int] = None,
+):
+    """
+    List files asynchronously from the Team Files or Cloud Storages.
+    """
+    if not path.endswith("/"):
+        path += "/"
+    method = "file-storage.v2.list"
+    json_body = {
+        ApiField.TEAM_ID: team_id,
+        ApiField.PATH: path,
+        ApiField.RECURSIVE: recursive,
+        ApiField.WITH_METADATA: with_metadata,
+        ApiField.FILES: include_files,
+        ApiField.FOLDERS: include_folders,
+    }
+    if limit is not None:
+        json_body[ApiField.LIMIT] = limit
+
+    semaphore = asyncio.Semaphore(5)
+    tasks = []
+    all_data = []
+    
+    async def _fetch_data(token=None):
+        nonlocal json_body
+        req_data = json_body.copy()
+        if token:
+            req_data["continuationToken"] = token
+        
+        async with semaphore:
+            t = time.monotonic()
+            response = await api.post_async(method, req_data)
+            response_json = response.json()
+            entities = response_json.get("entities", [])
+            token = response_json.get("continuationToken", None)
+            sly.logger.debug(f"Fetched {len(entities)} files in {time.monotonic() - t:.4f} sec")
+            return entities, token
+
+    # Get first batch of data
+    t_total = time.monotonic()
+    entities, continuation_token = await _fetch_data()
+    all_data.extend(entities)
+
+    # Check if we've exceeded the limit with just the first batch
+    if limit is not None and len(all_data) >= limit:
+        all_data = all_data[:limit]
+        continuation_token = None
+    
+    # Process remaining data in parallel batches
+    while continuation_token:
+        next_batch_tokens = []
+        current_token = continuation_token
+        continuation_token = None
+        
+        # Create initial task for the current token
+        tasks.append(asyncio.create_task(_fetch_data(current_token)))
+        
+        # Wait for all tasks to complete
+        for task in asyncio.as_completed(tasks):
+            entities, token = await task
+            all_data.extend(entities)
+            if token:
+                next_batch_tokens.append(token)
+            
+            # Check if we've exceeded the limit
+            if limit is not None and len(all_data) >= limit:
+                all_data = all_data[:limit]
+                next_batch_tokens = []
+                break
+        
+        # Clear tasks for next batch
+        tasks = []
+        
+        # Set continuation token for next iteration if we have more tokens
+        if next_batch_tokens:
+            continuation_token = next_batch_tokens[0]
+            for token in next_batch_tokens[1:]:
+                tasks.append(asyncio.create_task(_fetch_data(token)))
+    
+    sly.logger.debug(f"Total file listing completed in {time.monotonic() - t_total:.4f} sec, fetched {len(all_data)} files")
+    
+    # Convert results if needed
+    if return_type == "fileinfo":
+        results = []
+        for info in all_data:
+            info[ApiField.IS_DIR] = info[ApiField.TYPE] == "folder"
+            results.append(api.storage._convert_json_info(info))
+        return results
+
+    return all_data
