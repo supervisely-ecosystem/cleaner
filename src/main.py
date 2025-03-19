@@ -156,7 +156,7 @@ def main():
         progress.close()
 
         # Waiting for the next cleaning cycle
-        sleep_time_hours = sleep_time / 3600
+        sleep_time_hours = int(sleep_time / 3600)
         with tqdm(
             total=sleep_time_hours,
             desc=f"Waiting {sleep_time_hours} hour for next cleaning cycle",
