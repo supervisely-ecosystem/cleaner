@@ -7,12 +7,14 @@ from typing import Dict, List, Literal, Optional, Union
 
 import requests
 import supervisely as sly
-from supervisely import tqdm_sly
+from supervisely._utils import run_coroutine
 from supervisely.api.file_api import FileInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.storage_api import StorageApi
+from tqdm import tqdm
 
 DEFAULT_LIMIT = 10000
+
 
 def sort_by_date(files_info: List[dict], del_date: datetime) -> List[str]:
     file_to_del_paths = []
@@ -147,35 +149,63 @@ def clean_offline_sessions(
 
         last_file = None
         try:
-            files_infos = api.storage.list(
-                team_id,
-                offlines_path,
-                return_type="dict",
-                include_folders=False,
-                with_metadata=False,
-                limit=batch_size,
-                continuation_token=continuation_token,
+            # files_infos = api.storage.list(
+            #     team_id,
+            #     offlines_path,
+            #     return_type="dict",
+            #     include_folders=False,
+            #     with_metadata=False,
+            #     limit=batch_size,
+            #     continuation_token=continuation_token,
+            # )
+            files_infos = run_coroutine(
+                storage_get_list_async(
+                    api,
+                    team_id,
+                    offlines_path,
+                    return_type="dict",
+                    include_folders=False,
+                    with_metadata=False,
+                    limit=batch_size,
+                    continuation_token=continuation_token,
+                )
             )
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 400 and "limit" in e.response.text:
-                sly.logger.warning(f"Failed to list storage files due to limit error. Checking max limit...")
+                sly.logger.warning(
+                    f"Failed to list storage files due to limit error. Checking max limit..."
+                )
                 try:
                     error_details = json.loads(e.response.text)
                     max_limit = error_details["details"][0]["context"]["limit"]
-                    sly.logger.info(f"Max limit for storage listing set to {max_limit} due to API response recommendation.")
+                    sly.logger.info(
+                        f"Max limit for storage listing set to {max_limit} due to API response recommendation."
+                    )
                 except Exception as e:
                     sly.logger.warning(f"Failed to get max limit, setting default: {DEFAULT_LIMIT}")
                     max_limit = DEFAULT_LIMIT
                 batch_size = max_limit
                 try:
-                    files_infos = api.storage.list(
-                        team_id,
-                        offlines_path,
-                        return_type="dict",
-                        include_folders=False,
-                        with_metadata=False,
-                        limit=batch_size,
-                        continuation_token=continuation_token,
+                    # files_infos = api.storage.list(
+                    #     team_id,
+                    #     offlines_path,
+                    #     return_type="dict",
+                    #     include_folders=False,
+                    #     with_metadata=False,
+                    #     limit=batch_size,
+                    #     continuation_token=continuation_token,
+                    # )
+                    files_infos = run_coroutine(
+                        storage_get_list_async(
+                            api,
+                            team_id,
+                            offlines_path,
+                            return_type="dict",
+                            include_folders=False,
+                            with_metadata=False,
+                            limit=batch_size,
+                            continuation_token=continuation_token,
+                        )
                     )
                 except Exception as e:
                     sly.logger.warning(f"Failed to list files after adjusting limit: {repr(e)}")
@@ -183,7 +213,7 @@ def clean_offline_sessions(
                 sly.logger.warning(f"Failed to list files: {repr(e)}")
         except Exception as e:
             sly.logger.warning(f"Failed to list files: {repr(e)}")
-            
+
         scanned_files += len(files_infos)
 
         all_task_ids = list(set([get_task_id(file_info["path"]) for file_info in files_infos]))
@@ -192,7 +222,9 @@ def clean_offline_sessions(
                 task_infos = []
                 for batch_tasks in sly.batched(all_task_ids, 500):
                     filters = [{"field": "id", "operator": "in", "value": batch_tasks}]
-                    task_infos.extend([t for w_id in w_ids for t in api.task.get_list(w_id, filters)])
+                    task_infos.extend(
+                        [t for w_id in w_ids for t in api.task.get_list(w_id, filters)]
+                    )
             else:
                 task_infos = []
         else:
@@ -200,7 +232,7 @@ def clean_offline_sessions(
 
         if len(task_infos) > 0:
             task_ids_to_remove.update({t["id"] for t in task_infos if is_removable(t, app_names)})
-        
+
         file_to_del_paths = []
         for file_info in files_infos:
             if get_task_id(file_info["path"]) in task_ids_to_remove:
@@ -215,9 +247,7 @@ def clean_offline_sessions(
 
         curr_batch_len = len(file_to_del_paths)
         if curr_batch_len > 0:
-            pbar = tqdm_sly(
-                desc=f"Removing batch {batch_num}", total=curr_batch_len
-            ).update
+            pbar = tqdm(desc=f"Removing batch {batch_num}", total=curr_batch_len).update
             api.file.remove_batch(team_id, file_to_del_paths, pbar, batch_size)
             removed_files += curr_batch_len
             sly.logger.info(f"Batch {batch_num} finished. Removed: {curr_batch_len}")
@@ -229,6 +259,7 @@ def clean_offline_sessions(
     sly.logger.info(f"Total files scanned in offline sessions: {scanned_files}")
     return removed_files
 
+
 async def teams_get_list_async(
     api: sly.Api,
     filters: List[Dict[str, str]] = None,
@@ -238,12 +269,8 @@ async def teams_get_list_async(
     Get list of teams asynchronously from the Supervisely server.
     """
     method = "teams.list"
-    data = {
-        ApiField.FILTER: filters or [],
-        ApiField.SORT: ApiField.ID,
-        ApiField.SORT_ORDER: "asc"
-    }
-    
+    data = {ApiField.FILTER: filters or [], ApiField.SORT: ApiField.ID, ApiField.SORT_ORDER: "asc"}
+
     semaphore = asyncio.Semaphore(5)
     pages_count = None
     tasks: List[asyncio.Task] = []
@@ -262,29 +289,30 @@ async def teams_get_list_async(
     t = time.monotonic()
     items = await _r(data, 1)
     sly.logger.debug(f"Awaited teams page 1/{pages_count} for {time.monotonic() - t:.4f} sec")
-    
+
     # Check if we've exceeded the limit with just the first page
     if limit is not None and len(items) >= limit:
         return items[:limit]
-    
+
     # Get remaining pages in parallel
     t = time.monotonic()
     for page_n in range(2, pages_count + 1):
         data[ApiField.PAGE] = page_n
         tasks.append(asyncio.create_task(_r(data.copy(), page_n)))
-    
+
     # Await all tasks and collect results
     for i, task in enumerate(tasks, 2):
         new_items = await task
         items.extend(new_items)
         sly.logger.debug(f"Awaited teams page {i}/{pages_count} for {time.monotonic() - t:.4f} sec")
         t = time.monotonic()
-        
+
         # Check if we've exceeded the limit
         if limit is not None and len(items) >= limit:
             return items[:limit]
-    
+
     return items
+
 
 async def storage_get_list_async(
     api: sly.Api,
@@ -296,6 +324,7 @@ async def storage_get_list_async(
     include_files: bool = True,
     include_folders: bool = True,
     limit: Optional[int] = None,
+    continuation_token: Optional[str] = None,
 ):
     """
     List files asynchronously from the Team Files or Cloud Storages.
@@ -317,13 +346,13 @@ async def storage_get_list_async(
     semaphore = asyncio.Semaphore(5)
     tasks = []
     all_data = []
-    
+
     async def _fetch_data(token=None):
         nonlocal json_body
         req_data = json_body.copy()
         if token:
             req_data["continuationToken"] = token
-        
+
         async with semaphore:
             t = time.monotonic()
             response = await api.post_async(method, req_data)
@@ -335,47 +364,51 @@ async def storage_get_list_async(
 
     # Get first batch of data
     t_total = time.monotonic()
-    entities, continuation_token = await _fetch_data()
+    # Use provided continuation token if available
+    initial_token = continuation_token
+    entities, continuation_token = await _fetch_data(initial_token)
     all_data.extend(entities)
 
     # Check if we've exceeded the limit with just the first batch
     if limit is not None and len(all_data) >= limit:
         all_data = all_data[:limit]
         continuation_token = None
-    
+
     # Process remaining data in parallel batches
     while continuation_token:
         next_batch_tokens = []
         current_token = continuation_token
         continuation_token = None
-        
+
         # Create initial task for the current token
         tasks.append(asyncio.create_task(_fetch_data(current_token)))
-        
+
         # Wait for all tasks to complete
         for task in asyncio.as_completed(tasks):
             entities, token = await task
             all_data.extend(entities)
             if token:
                 next_batch_tokens.append(token)
-            
+
             # Check if we've exceeded the limit
             if limit is not None and len(all_data) >= limit:
                 all_data = all_data[:limit]
                 next_batch_tokens = []
                 break
-        
+
         # Clear tasks for next batch
         tasks = []
-        
+
         # Set continuation token for next iteration if we have more tokens
         if next_batch_tokens:
             continuation_token = next_batch_tokens[0]
             for token in next_batch_tokens[1:]:
                 tasks.append(asyncio.create_task(_fetch_data(token)))
-    
-    sly.logger.debug(f"Total file listing completed in {time.monotonic() - t_total:.4f} sec, fetched {len(all_data)} files")
-    
+
+    sly.logger.debug(
+        f"Total file listing completed in {time.monotonic() - t_total:.4f} sec, fetched {len(all_data)} files"
+    )
+
     # Convert results if needed
     if return_type == "fileinfo":
         results = []
