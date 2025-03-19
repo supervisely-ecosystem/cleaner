@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from typing import Dict, List, Literal, Optional, Union
 
+import httpx
 import requests
 import supervisely as sly
 from supervisely._utils import run_coroutine
@@ -172,7 +173,7 @@ def clean_offline_sessions(
                     continuation_token=continuation_token,
                 )
             )
-        except requests.exceptions.HTTPError as e:
+        except (requests.exceptions.HTTPError, httpx.HTTPStatusError) as e:
             if e.response.status_code == 400 and "limit" in e.response.text:
                 sly.logger.warning(
                     f"Failed to list storage files due to limit error. Checking max limit..."

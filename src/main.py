@@ -157,7 +157,11 @@ def main():
 
         # Waiting for the next cleaning cycle
         sleep_time_hours = sleep_time / 3600
-        with tqdm(total=sleep_time_hours, desc=f"Waiting {sleep_text} for next cleaning cycle", unit="hours") as pbar:
+        with tqdm(
+            total=sleep_time_hours,
+            desc=f"Waiting {sleep_time_hours} hour for next cleaning cycle",
+            unit="hours",
+        ) as pbar:
             chunk_size_hours = 1  # Update progress every hour
             chunks = math.ceil(sleep_time_hours / chunk_size_hours)
             for _ in range(chunks):
