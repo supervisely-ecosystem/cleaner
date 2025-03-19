@@ -159,7 +159,7 @@ def main():
         sleep_time_hours = int(sleep_time / 3600)
         with tqdm(
             total=sleep_time_hours,
-            desc=f"Waiting {sleep_time_hours} hour for next cleaning cycle",
+            desc=f"Waiting {sleep_time_hours} hours for next cleaning cycle",
             unit="hours",
         ) as pbar:
             chunk_size_hours = 1  # Update progress every hour
