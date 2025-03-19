@@ -148,6 +148,8 @@ def clean_offline_sessions(
     while True:
 
         last_file = None
+        files_infos = []
+
         try:
             # files_infos = api.storage.list(
             #     team_id,
@@ -213,6 +215,9 @@ def clean_offline_sessions(
                 sly.logger.warning(f"Failed to list files: {repr(e)}")
         except Exception as e:
             sly.logger.warning(f"Failed to list files: {repr(e)}")
+
+        if not files_infos:
+            break
 
         scanned_files += len(files_infos)
 
