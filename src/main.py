@@ -70,7 +70,7 @@ def main():
 
             workspaces = api.workspace.get_list(team_id)
             workspaces_ids = [workspace.id for workspace in workspaces]
-            sly.logger.info(f"Team: {team_name}. Checking old files...")
+            sly.logger.info(f"Team: [{team_id}]{team_name}. Checking old files...")
 
             # export directory
             sly.logger.debug(f"Team: {team_name}. Checking files in {export_path_to_del}.")
@@ -145,16 +145,16 @@ def main():
                 total_files_cnt += len(file_to_del_paths)
 
             # # offline sessions files
-            sly.logger.info(f"Team: {team_name}. Checking offline session files...")
+            sly.logger.info(f"Team: [{team_id}]{team_name}. Checking offline session files...")
             removed_files = f.clean_offline_sessions(
                 api, team_id, offlines_path, apps_to_clean, batch_size, workspaces_ids
             )
             sly.logger.debug(
-                f"Team: {team_name}. Removed offline sessions files: {len(removed_files)}."
+                f"Team: {team_name}. Removed offline sessions files: {removed_files}."
             )
 
             sly.logger.info(
-                f"Team: {team_name}. Total files removed: {len(file_to_del_paths) + removed_files}."
+                f"Team: [{team_id}]{team_name}. Total files removed: {len(file_to_del_paths) + removed_files}."
             )
 
             total_files_cnt += removed_files
