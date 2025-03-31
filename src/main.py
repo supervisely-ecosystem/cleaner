@@ -57,6 +57,7 @@ def main():
     while True:
         total_files_cnt = 0
         teams_infos = None
+        total_log_counter = 0
         if all_teams is False and selected_team_id is not None:
             teams_infos = [api.team.get_info_by_id(selected_team_id)]
         else:
@@ -69,10 +70,10 @@ def main():
 
             workspaces = api.workspace.get_list(team_id)
             workspaces_ids = [workspace.id for workspace in workspaces]
-            sly.logger.info(f"Check old files for {team_name} team")
+            sly.logger.info(f"Team: [{team_id}]{team_name}. Checking old files...")
 
             # export directory
-            sly.logger.info(f"Team: {team_name}. Checking files in {export_path_to_del}.")
+            sly.logger.debug(f"Team: {team_name}. Checking files in {export_path_to_del}.")
             # files_info = api.storage.list(
             #     team_id,
             #     export_path_to_del,
@@ -93,7 +94,7 @@ def main():
             file_to_del_paths = f.sort_by_date(files_info, del_date)
 
             # import directory
-            sly.logger.info(f"Team: {team_name}. Checking files in {import_path_to_del}.")
+            sly.logger.debug(f"Team: {team_name}. Checking files in {import_path_to_del}.")
             # files_info = api.storage.list(
             #     team_id,
             #     import_path_to_del,
@@ -115,7 +116,7 @@ def main():
 
             # other legacy directories
             for curr_path in possible_paths_to_del:
-                sly.logger.info(f"Team: {team_name}. Checking files in {curr_path}.")
+                sly.logger.debug(f"Team: {team_name}. Checking files in {curr_path}.")
                 # files_info_old = api.storage.list(
                 #     team_id,
                 #     curr_path,
@@ -136,21 +137,37 @@ def main():
                 file_to_del_paths.extend(f.sort_by_date(files_info_old, del_date))
 
             if len(file_to_del_paths) > 0:
-                sly.logger.info(f"Team: {team_name}. Start removing.")
-                pbar = tqdm(total=len(file_to_del_paths), desc="Cleaning...").update
+                # sly.logger.info(f"Team: {team_name}. Start removing.")
+                pbar = tqdm(
+                    total=len(file_to_del_paths), desc=f"Team: {team_name}. Cleaning"
+                ).update
                 api.file.remove_batch(team_id, file_to_del_paths, pbar, batch_size)
                 total_files_cnt += len(file_to_del_paths)
 
             # # offline sessions files
+            sly.logger.info(f"Team: [{team_id}]{team_name}. Checking offline session files...")
             removed_files = f.clean_offline_sessions(
                 api, team_id, offlines_path, apps_to_clean, batch_size, workspaces_ids
             )
+            sly.logger.debug(
+                f"Team: {team_name}. Removed offline sessions files: {removed_files}."
+            )
+
+            sly.logger.info(
+                f"Team: [{team_id}]{team_name}. Total files removed: {len(file_to_del_paths) + removed_files}."
+            )
+
             total_files_cnt += removed_files
 
-            sly.logger.info(f"Team: {team_name}. Total removed: {total_files_cnt}.")
+            total_log_counter += 1
+            if total_log_counter >= 50:
+                sly.logger.info(f"App Session. Total files removed: {total_files_cnt}.")
+                total_log_counter = 0
+
             progress.update(1)
             time.sleep(2)
 
+        sly.logger.info(f"App Session. Total files removed: {total_files_cnt}.")
         sleep_text = f"{sleep_days} day" if sleep_days <= 1 else f"{sleep_days} days"
         sly.logger.info(f"Finished. Sleep time: {sleep_text}.")
         progress.close()
