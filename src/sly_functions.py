@@ -132,7 +132,7 @@ def clean_offline_sessions(
     w_ids=None,
 ):
     """Clean offline sessions files."""
-    sly.logger.info(f"Start cleaning offline sessions files (batch size: {batch_size})")
+    sly.logger.debug(f"Start cleaning offline sessions files (batch size: {batch_size})")
 
     # * custom implementation of the list method for Cleaner
     api.storage = CustomStorageApi(api)
@@ -253,16 +253,16 @@ def clean_offline_sessions(
 
         curr_batch_len = len(file_to_del_paths)
         if curr_batch_len > 0:
-            pbar = tqdm(desc=f"Removing batch {batch_num}", total=curr_batch_len).update
+            pbar = tqdm(desc=f"Batch {batch_num}. Removing", total=curr_batch_len).update
             api.file.remove_batch(team_id, file_to_del_paths, pbar, batch_size)
             removed_files += curr_batch_len
-            sly.logger.info(f"Batch {batch_num} finished. Removed: {curr_batch_len}")
+            sly.logger.debug(f"Batch {batch_num} finished. Removed: {curr_batch_len}")
             batch_num += 1
 
         if len(files_infos) < batch_size:
             break
 
-    sly.logger.info(f"Total files scanned in offline sessions: {scanned_files}")
+    sly.logger.debug(f"Total files scanned in offline sessions: {scanned_files}")
     return removed_files
 
 
