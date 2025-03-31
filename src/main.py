@@ -149,9 +149,7 @@ def main():
             removed_files = f.clean_offline_sessions(
                 api, team_id, offlines_path, apps_to_clean, batch_size, workspaces_ids
             )
-            sly.logger.debug(
-                f"Team: {team_name}. Removed offline sessions files: {removed_files}."
-            )
+            sly.logger.debug(f"Team: {team_name}. Removed offline sessions files: {removed_files}.")
 
             sly.logger.info(
                 f"Team: [{team_id}]{team_name}. Total files removed: {len(file_to_del_paths) + removed_files}."
@@ -164,7 +162,7 @@ def main():
                 sly.logger.info(f"App Session. Total files removed: {total_files_cnt}.")
                 total_log_counter = 0
 
-            progress.update(1)
+            progress(1)
             time.sleep(2)
 
         sly.logger.info(f"App Session. Total files removed: {total_files_cnt}.")
