@@ -2,16 +2,18 @@ import asyncio
 import base64
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Literal, Optional, Union
 
 import httpx
 import requests
 import supervisely as sly
 from supervisely._utils import run_coroutine
+from supervisely.api.api import ApiField
 from supervisely.api.file_api import FileInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.storage_api import StorageApi
+from supervisely.api.task_api import TaskApi
 from tqdm import tqdm
 
 DEFAULT_LIMIT = 10000
@@ -425,14 +427,50 @@ async def storage_get_list_async(
 
     return all_data
 
+def filter_tasks_by_datetime(tasks: List[Dict[str, Union[int, str]]]) -> List[int]:
+
+    """
+    Filter tasks by their 'finishedAt' field, keeping only those that are older than the current time by 1 day.
+
+    Time format is 2018-09-13T15:37:50.248Z
+    
+    Returns a list of task IDs that meet the criteria.
+
+    :param tasks: List of task dictionaries, each containing a 'finishedAt' field.
+    :return: List of task IDs that are older than 1 day.
+    """
+    
+    one_day_ago = datetime.now() - timedelta(days=1)
+    result = []
+    for task in tasks:
+        status = task.get(ApiField.STATUS, None)
+        started_at = task.get(ApiField.STARTED_AT, None)
+        finished_at = task.get(ApiField.FINISHED_AT, None)
+        if finished_at is not None:
+            # Convert string to datetime
+            try:
+                finished_at_dt = datetime.strptime(finished_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+            except ValueError:
+                # In case microseconds are missing
+                finished_at_dt = datetime.strptime(finished_at, "%Y-%m-%dT%H:%M:%SZ")
+            if finished_at_dt < one_day_ago:
+                result.append(task[ApiField.ID])
+        elif started_at is not None and status in [TaskApi.Status.STOPPED.value, TaskApi.Status.ERROR.value]:
+            try:
+                started_at_dt = datetime.strptime(started_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+            except ValueError:
+                # In case microseconds are missing
+                started_at_dt = datetime.strptime(started_at, "%Y-%m-%dT%H:%M:%SZ")
+            if started_at_dt < one_day_ago:
+                result.append(task[ApiField.ID])
+        else:
+            continue
+    return result
 
 def remove_internal_tasks(api: sly.Api):
     """
     Remove Internal tasks from the Supervisely server.
     """
-    from supervisely.api.api import ApiField
-    from supervisely.api.task_api import TaskApi
-    
     method = "tasks.bulk.remove"
     allowed_statuses = [TaskApi.Status.STOPPED.value, TaskApi.Status.FINISHED.value, TaskApi.Status.ERROR.value]
     sly.logger.info("Removing internal tasks...")
@@ -457,12 +495,12 @@ def remove_internal_tasks(api: sly.Api):
             ],
         )        
         if tasks:
-            progress = tqdm(desc="Removing internal tasks", total=len(tasks))
-            task_ids = [task["id"] for task in tasks]
-            for batch_ids in sly.batched(task_ids, 500):
+            filtered_tas_ids = filter_tasks_by_datetime(tasks)
+            progress = tqdm(desc="Removing internal tasks", total=len(filtered_tas_ids))
+            for batch_ids in sly.batched(filtered_tas_ids, 500):
                 api.post(method, {ApiField.IDS: batch_ids})
                 progress.update(len(batch_ids))
             progress.close()
-            sly.logger.info(f"Removed {len(tasks)} internal tasks.")
+            sly.logger.info(f"Removed {len(filtered_tas_ids)} internal tasks.")
     except Exception as e:
         sly.logger.warning(f"Failed to remove internal tasks: {repr(e)}", exc_info=True)
