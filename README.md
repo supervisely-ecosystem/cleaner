@@ -19,8 +19,9 @@
 
 ## Overview
 
-This application allows admins to clear the teams folders for all teams in an instance over a period of time(in days).
-Cleaning in teams folders will be carried out in the following paths:
+This application automatically deletes all inactive internal tasks that are older than one day. It helps keep your task management system clean and up-to-date by removing outdated and unused internal records.
+Additionally, the application allows administrators to clear the team folders for all teams within an instance over a specified time period (in days).  
+The cleanup in team folders is carried out in the following paths:
 
 - `/tmp/supervisely/export` - directory where temporary files are saved during export.
 - `/offline-sessions` - directory where files that make apps sessions available after shutdown are saved.
