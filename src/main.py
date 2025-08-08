@@ -58,12 +58,15 @@ def main():
         total_files_cnt = 0
         teams_infos = None
         total_log_counter = 0
+        
+        f.remove_internal_tasks(api)
+
         if all_teams is False and selected_team_id is not None:
             teams_infos = [api.team.get_info_by_id(selected_team_id)]
         else:
             # teams_infos = api.team.get_list()
             teams_infos = f.run_coroutine(f.teams_get_list_async(api))
-        progress = tqdm(desc="Start cleaning", total=len(teams_infos))
+        progress = tqdm(desc="Cleaning teams", total=len(teams_infos))
         for team_info in teams_infos:
             team_id = team_info.id
             team_name = team_info.name

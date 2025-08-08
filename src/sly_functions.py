@@ -424,3 +424,45 @@ async def storage_get_list_async(
         return results
 
     return all_data
+
+
+def remove_internal_tasks(api: sly.Api):
+    """
+    Remove Internal tasks from the Supervisely server.
+    """
+    from supervisely.api.api import ApiField
+    from supervisely.api.task_api import TaskApi
+    
+    method = "tasks.bulk.remove"
+    allowed_statuses = [TaskApi.Status.STOPPED.value, TaskApi.Status.FINISHED.value, TaskApi.Status.ERROR.value]
+    sly.logger.info("Removing internal tasks...")
+    try:
+        task_info = api.task.get_info_by_id(int(api.task_id))
+        if task_info is None:
+            sly.logger.warning("Task info is None. Cannot determine workspace ID for internal tasks removal.")
+            return
+        workspace_id = task_info.get(ApiField.WORKSPACE_ID)
+        if workspace_id is None:
+            sly.logger.warning("Workspace ID not found for the task. Skipping internal tasks removal.")
+            return
+        tasks = api.task.get_list(
+            workspace_id=workspace_id,
+            filters=[
+                {
+                    ApiField.FIELD: ApiField.STATUS,
+                    ApiField.OPERATOR: "in",
+                    ApiField.VALUE: allowed_statuses,
+                },
+                {ApiField.FIELD: ApiField.TYPE, ApiField.OPERATOR: "=", ApiField.VALUE: "internal"},
+            ],
+        )        
+        if tasks:
+            progress = tqdm(desc="Removing internal tasks", total=len(tasks))
+            task_ids = [task["id"] for task in tasks]
+            for batch_ids in sly.batched(task_ids, 500):
+                api.post(method, {ApiField.IDS: batch_ids})
+                progress.update(len(batch_ids))
+            progress.close()
+            sly.logger.info(f"Removed {len(tasks)} internal tasks.")
+    except Exception as e:
+        sly.logger.warning(f"Failed to remove internal tasks: {repr(e)}", exc_info=True)
